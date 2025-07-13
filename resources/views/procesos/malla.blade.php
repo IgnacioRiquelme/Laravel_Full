@@ -4,6 +4,12 @@
 <div class="p-4 bg-gray-100 min-h-screen">
     <h1 class="text-3xl font-bold text-center text-indigo-700 mb-6">Malla de Procesos</h1>
 
+    @if (session('success'))
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mb-4 text-sm text-center">
+        {{ session('success') }}
+    </div>
+    @endif
+
     @foreach ($grupos as $grupo)
         <div class="mb-10">
             <h2 class="mt-6 text-2xl font-bold text-{{ $grupo['color'] }}-600 mb-4 flex items-center gap-2">
@@ -33,8 +39,9 @@
                         $estado = $proceso->estado_nombre ?? $proceso->estado ?? 'Pendiente';
                     @endphp
 
-                    <div class="rounded-xl shadow-md p-3 transition duration-300 relative flex flex-col justify-between {{ $textColor }}"
-                         style="background-color: {{ $bgColor }}; height: 170px;"
+                    <div id="proceso-{{ $proceso->id_proceso }}"
+                         class="rounded-xl shadow-md p-3 transition duration-300 relative flex flex-col justify-between {{ $textColor }}"
+                         style="background-color: {{ $bgColor }}; height: 190px;"
                          title="{{ $proceso->descripcion }}">
 
                         <div class="font-bold text-sm">
@@ -56,19 +63,36 @@
                             </span>
                         </div>
 
-                        @if ($proceso->corre_hoy)
-                            <div class="mt-2">
-                                <button
-                                    class="text-white text-xs underline hover:text-gray-200"
-                                    data-id="{{ $proceso->id_proceso }}"
-                                    data-inicio="{{ optional($proceso->inicio)->format('Y-m-d\TH:i') }}"
-                                    data-fin="{{ optional($proceso->fin)->format('Y-m-d\TH:i') }}"
-                                    data-estado="{{ $estado }}"
-                                    onclick="handleClick(this)">
-                                    Actualizar
-                                </button>
-                            </div>
+                        {{-- 🔽 NUEVO: Mostrar duración e iniciadores --}}
+                        @if ($proceso->inicio && $proceso->fin)
+                            @php
+                                $duracion = $proceso->inicio->diff($proceso->fin)->format('%H:%I:%S');
+                            @endphp
+                            <div class="text-xs mt-1">⏱️ <strong>Duración:</strong> {{ $duracion }}</div>
                         @endif
+
+                        @if ($proceso->adm_inicio)
+                            <div class="text-xs mt-1">👤 <strong>Inicio:</strong> {{ $proceso->adm_inicio }}</div>
+                        @endif
+
+                        @if ($proceso->adm_fin)
+                            <div class="text-xs">👤 <strong>Fin:</strong> {{ $proceso->adm_fin }}</div>
+                        @endif
+
+                        @if ($proceso->corre_hoy || ($proceso->inicio && !$proceso->fin))
+    <div class="mt-2">
+        <button
+            class="text-white text-xs underline hover:text-gray-200"
+            data-id="{{ $proceso->id_proceso }}"
+            data-nombre="{{ $proceso->proceso }}"
+            data-inicio="{{ optional($proceso->inicio)->format('Y-m-d\TH:i') }}"
+            data-fin="{{ optional($proceso->fin)->format('Y-m-d\TH:i') }}"
+            data-estado="{{ $proceso->estado_nombre ?? 'Pendiente' }}"
+            onclick="handleClick(this)">
+            Actualizar
+        </button>
+    </div>
+@endif
                     </div>
                 @endforeach
             </div>
@@ -81,9 +105,10 @@
     <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 relative">
         <form id="modalForm" method="POST" action="">
             @csrf
-            {{-- @method('PUT') NO LO USAMOS AQUÍ PORQUE USAMOS POST --}}
 
-            <h2 class="text-lg font-semibold mb-4 text-gray-800">Actualizar Proceso</h2>
+            <h2 class="text-lg font-semibold mb-4 text-gray-800">
+                Actualizar Proceso <span id="modal-proceso-id" class="text-indigo-600"></span>
+            </h2>
 
             <label class="block text-sm text-gray-700 mb-1">Inicio</label>
             <input type="datetime-local" id="modal-inicio" name="inicio"
@@ -115,8 +140,11 @@
 
 {{-- ✅ JS --}}
 <script>
+let procesoActivo = null;
+
 function handleClick(button) {
     const id = button.dataset.id;
+    const nombre = button.dataset.nombre || '';
     const inicio = button.dataset.inicio || '';
     const fin = button.dataset.fin || '';
     const estado = button.dataset.estado || 'Pendiente';
@@ -125,13 +153,37 @@ function handleClick(button) {
     document.getElementById('modal-inicio').value = inicio;
     document.getElementById('modal-fin').value = fin;
     document.getElementById('modal-estado').value = estado;
-    form.action = `/procesos/actualizar/${id}`; // 🔁 redirige al controlador
+    form.action = `/procesos/actualizar/${id}`;
+
+    document.getElementById('modal-proceso-id').textContent = `(ID: ${id}) - ${nombre}`;
+
+    if (procesoActivo) {
+        procesoActivo.classList.remove('card-activa');
+    }
+
+    const tarjeta = document.getElementById(`proceso-${id}`);
+    if (tarjeta) {
+        tarjeta.classList.add('card-activa');
+        procesoActivo = tarjeta;
+    }
 
     document.getElementById('modal').classList.remove('hidden');
 }
 
 function closeModal() {
+    if (procesoActivo) {
+        procesoActivo.classList.remove('card-activa');
+        procesoActivo = null;
+    }
     document.getElementById('modal').classList.add('hidden');
 }
 </script>
+
+{{-- ✅ Estilos extra --}}
+<style>
+.card-activa {
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+}
+</style>
 @endsection
