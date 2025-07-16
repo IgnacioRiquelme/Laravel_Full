@@ -5,19 +5,21 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class MallaController extends Controller
 {
     public function index()
     {
-        $dia = strtolower(Carbon::now('America/Santiago')->format('l'));
-        $hoy = Carbon::now('America/Santiago')->toDateString();
+        // Obtener fecha desde archivo persistente
+        $fechaMalla = $this->obtenerFechaMalla();
+        $dia = strtolower(Carbon::parse($fechaMalla)->locale('es')->englishDayOfWeek);
 
         $gruposBD = DB::table('grupos')->orderBy('id')->get();
 
         $procesosHoy = DB::table('procesos')
-            ->whereDate('created_at', $hoy)
+            ->whereDate('fecha_malla', $fechaMalla)
             ->get()
             ->keyBy('id_proceso');
 
@@ -68,23 +70,25 @@ class MallaController extends Controller
             ];
         });
 
-        return view('procesos.malla', compact('grupos'));
+        return view('procesos.malla', [
+            'grupos' => $grupos,
+            'fecha_malla' => $fechaMalla
+        ]);
     }
 
     public function actualizar(Request $request, $idProceso)
     {
         $correo = Auth::user()->email;
         $sigla = DB::table('operadores')->where('correo', $correo)->value('sigla') ?? 'ND';
-        $hoy = Carbon::now('America/Santiago')->toDateString();
+        $fechaMalla = $this->obtenerFechaMalla();
 
         $registro = DB::table('procesos')
             ->where('id_proceso', $idProceso)
-            ->whereDate('created_at', $hoy)
+            ->whereDate('fecha_malla', $fechaMalla)
             ->first();
 
         $estadoNombre = $request->input('estado');
         $estadoID = DB::table('estados_procesos')->where('nombre', $estadoNombre)->value('id');
-
         $grupoNombre = DB::table('nombres_procesos')->where('id_proceso', $idProceso)->value('grupo');
 
         $data = [
@@ -119,15 +123,64 @@ class MallaController extends Controller
                 ->where('id', $registro->id)
                 ->update($data);
         } else {
-            $data = array_merge($data, [
+            DB::table('procesos')->insert(array_merge($data, [
                 'id_proceso' => $idProceso,
                 'grupo' => $grupoNombre,
+                'fecha_malla' => $fechaMalla,
                 'created_at' => now(),
-            ]);
-
-            DB::table('procesos')->insert($data);
+            ]));
         }
 
         return redirect()->back()->with('success', 'Proceso actualizado.');
+    }
+
+    public function cerrarDia(Request $request)
+    {
+        $hoy = Carbon::now('America/Santiago');
+        $nuevaFecha = $hoy->hour < 9 ? $hoy->copy()->toDateString() : $hoy->copy()->addDay()->toDateString();
+        $diaSemana = strtolower(Carbon::parse($nuevaFecha)->englishDayOfWeek);
+
+        $procesosDelDia = DB::table('nombres_procesos')->get()->filter(function ($p) use ($diaSemana) {
+            $dias = json_decode($p->dias ?? '[]', true);
+            return in_array($diaSemana, $dias);
+        });
+
+        $insertados = 0;
+
+        foreach ($procesosDelDia as $proceso) {
+            $existe = DB::table('procesos')->where([
+                ['id_proceso', '=', $proceso->id_proceso],
+                ['fecha_malla', '=', $nuevaFecha]
+            ])->exists();
+
+            if (!$existe) {
+                DB::table('procesos')->insert([
+                    'id_proceso' => $proceso->id_proceso,
+                    'grupo' => $proceso->grupo,
+                    'fecha_malla' => $nuevaFecha,
+                    'estado_id' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $insertados++;
+            }
+        }
+
+        // Guardar fecha en archivo
+        Storage::put('malla_fecha.txt', $nuevaFecha);
+
+        return redirect()->back()->with('success', "✅ Cierre de día exitoso. Se registraron $insertados procesos para la fecha $nuevaFecha.");
+    }
+
+    private function obtenerFechaMalla(): string
+    {
+        if (Storage::exists('malla_fecha.txt')) {
+            return trim(Storage::get('malla_fecha.txt'));
+        } else {
+            $hoy = Carbon::now('America/Santiago');
+            $fecha = $hoy->hour < 9 ? $hoy->copy()->subDay()->toDateString() : $hoy->toDateString();
+            Storage::put('malla_fecha.txt', $fecha);
+            return $fecha;
+        }
     }
 }

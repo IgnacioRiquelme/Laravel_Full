@@ -2,7 +2,24 @@
 
 @section('content')
 <div class="p-4 bg-gray-100 min-h-screen">
-    <h1 class="text-3xl font-bold text-center text-indigo-700 mb-6">Malla de Procesos</h1>
+    <div class="mb-4 relative">
+    <h1 class="text-3xl font-bold text-indigo-700 text-center">Malla de Procesos</h1>
+
+    {{-- 🔒 Botón para cierre de día alineado a la derecha --}}
+    <form method="POST" action="{{ route('procesos.cerrar-dia') }}"
+          class="absolute right-0 top-0"
+          onsubmit="return confirm('¿Estás seguro que deseas cerrar el día?')">
+        @csrf
+        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm font-semibold shadow">
+            🔒 Cerrar Día
+        </button>
+    </form>
+</div>
+
+    {{-- 📅 Fecha activa --}}
+    <p class="text-sm text-gray-700 mb-6 text-center">
+        Fecha en ejecución: <strong>{{ \Carbon\Carbon::now('America/Santiago')->format('d-m-Y') }}</strong>
+    </p>
 
     @if (session('success'))
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mb-4 text-sm text-center">
@@ -63,7 +80,6 @@
                             </span>
                         </div>
 
-                        {{-- 🔽 NUEVO: Mostrar duración e iniciadores --}}
                         @if ($proceso->inicio && $proceso->fin)
                             @php
                                 $duracion = $proceso->inicio->diff($proceso->fin)->format('%H:%I:%S');
@@ -80,19 +96,19 @@
                         @endif
 
                         @if ($proceso->corre_hoy || ($proceso->inicio && !$proceso->fin))
-    <div class="mt-2">
-        <button
-            class="text-white text-xs underline hover:text-gray-200"
-            data-id="{{ $proceso->id_proceso }}"
-            data-nombre="{{ $proceso->proceso }}"
-            data-inicio="{{ optional($proceso->inicio)->format('Y-m-d\TH:i') }}"
-            data-fin="{{ optional($proceso->fin)->format('Y-m-d\TH:i') }}"
-            data-estado="{{ $proceso->estado_nombre ?? 'Pendiente' }}"
-            onclick="handleClick(this)">
-            Actualizar
-        </button>
-    </div>
-@endif
+                            <div class="mt-2">
+                                <button
+                                    class="text-white text-xs underline hover:text-gray-200"
+                                    data-id="{{ $proceso->id_proceso }}"
+                                    data-nombre="{{ $proceso->proceso }}"
+                                    data-inicio="{{ optional($proceso->inicio)->format('Y-m-d\TH:i') }}"
+                                    data-fin="{{ optional($proceso->fin)->format('Y-m-d\TH:i') }}"
+                                    data-estado="{{ $proceso->estado_nombre ?? 'Pendiente' }}"
+                                    onclick="handleClick(this)">
+                                    Actualizar
+                                </button>
+                            </div>
+                        @endif
                     </div>
                 @endforeach
             </div>

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RequerimientoController;
 use App\Http\Controllers\MallaController;
+use App\Http\Middleware\EnsureDatabaseConnection;
 
 Route::get('/', fn () => view('welcome'));
 
@@ -36,7 +37,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('procesos')->group(function () {
         Route::get('/malla', [MallaController::class, 'index'])->name('procesos.malla');
         Route::post('/actualizar/{id}', [MallaController::class, 'actualizar'])->name('procesos.actualizar'); // ✅ Corregido
+        Route::post('/cerrar-dia', [MallaController::class, 'cerrarDia'])->name('procesos.cerrar-dia');
     });
+
+    //Rutas DB conexion
+    Route::middleware([EnsureDatabaseConnection::class])->group(function () {
+    Route::get('/', [TuControlador::class, 'index']);
+    // ⚠️ agrega aquí todas tus rutas protegidas
+    Route::resource('procesos', MallaController::class);
+});
 
     // API para edición de requerimientos
     Route::get('/api/requerimientos/{ticket}', function ($ticket) {
