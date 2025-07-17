@@ -34,11 +34,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/solicitantes', [RequerimientoController::class, 'storeSolicitante'])->name('solicitantes.store');
 
     // === MALLA DE PROCESOS ===
-    Route::prefix('procesos')->group(function () {
-        Route::get('/malla', [MallaController::class, 'index'])->name('procesos.malla');
-        Route::post('/actualizar/{id}', [MallaController::class, 'actualizar'])->name('procesos.actualizar'); // ✅ Corregido
-        Route::post('/cerrar-dia', [MallaController::class, 'cerrarDia'])->name('procesos.cerrar-dia');
-    });
+Route::prefix('procesos')->group(function () {
+    Route::get('/malla', [MallaController::class, 'index'])->name('procesos.malla');
+    Route::post('/actualizar/{id}', [MallaController::class, 'actualizar'])->name('procesos.actualizar');
+    Route::post('/cerrar-dia', [MallaController::class, 'cerrarDia'])->name('procesos.cerrar-dia');
+    Route::get('/exportar/{fecha}', [MallaController::class, 'exportar'])->name('procesos.exportar');
+
+
+    // ✅ NUEVA RUTA: vista histórica
+    Route::get('/historico/{fecha}', [MallaController::class, 'historico'])->name('procesos.historico');
+});
 
     //Rutas DB conexion
     Route::middleware([EnsureDatabaseConnection::class])->group(function () {

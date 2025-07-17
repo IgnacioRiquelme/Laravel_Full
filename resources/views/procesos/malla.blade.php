@@ -2,29 +2,78 @@
 
 @section('content')
 <div class="p-4 bg-gray-100 min-h-screen">
-    <div class="mb-4 relative">
-    <h1 class="text-3xl font-bold text-indigo-700 text-center">Malla de Procesos</h1>
 
-    {{-- 🔒 Botón para cierre de día alineado a la derecha --}}
-    <form method="POST" action="{{ route('procesos.cerrar-dia') }}"
-          class="absolute right-0 top-0"
-          onsubmit="return confirm('¿Estás seguro que deseas cerrar el día?')">
-        @csrf
-        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm font-semibold shadow">
-            🔒 Cerrar Día
-        </button>
-    </form>
-</div>
+    <div class="mb-4 relative">
+        <h1 class="text-3xl font-bold text-indigo-700 text-center">Malla de Procesos</h1>
+
+        @if (empty($vista_historica))
+    {{-- 🔒 Botón para cierre de día y 📤 exportar Excel con mismo estilo del requerimiento --}}
+    <div class="absolute right-0 top-0 flex gap-2 items-start">
+        <form method="POST" action="{{ route('procesos.cerrar-dia') }}"
+              onsubmit="return confirm('¿Estás seguro que deseas cerrar el día?')">
+            @csrf
+            <button type="submit"
+                    style="background: #991b1b; color: #fff; font-weight: bold; padding: 12px 24px; border-radius: 6px;">
+                🔒 Cerrar Día
+            </button>
+        </form>
+
+        <form action="{{ route('procesos.exportar', $fecha_malla) }}" method="GET" target="_blank">
+            <button type="submit"
+                    style="background: #166534; color: #fff; font-weight: bold; padding: 12px 24px; border-radius: 6px;">
+                📤 Exportar a Excel
+            </button>
+        </form>
+    </div>
+@endif
+    </div>
 
     {{-- 📅 Fecha activa --}}
-    <p class="text-sm text-gray-700 mb-6 text-center">
-        Fecha en ejecución: <strong>{{ \Carbon\Carbon::now('America/Santiago')->format('d-m-Y') }}</strong>
-    </p>
+    {{-- 🔍 Navegación a días anteriores --}}
+    <div class="text-center mt-4 mb-6">
+        <label for="historico-selector" class="text-sm text-gray-700 mr-2">Ver malla de días anteriores:</label>
+        <select id="historico-selector" class="text-sm border rounded px-2 py-1"
+                onchange="if (this.value) window.location.href = this.value;">
+            <option value="">-- Seleccionar fecha --</option>
+            @php
+                use Carbon\Carbon;
+                $actual = \Carbon\Carbon::parse($fecha_malla ?? now('America/Santiago'));
+            @endphp
+            @for ($i = 1; $i <= 7; $i++)
+                @php
+                    $fecha = $actual->copy()->subDays($i);
+                    $ruta = route('procesos.historico', $fecha->toDateString());
+                @endphp
+                <option value="{{ $ruta }}">{{ $fecha->format('d-m-Y') }}</option>
+            @endfor
+        </select>
+    </div>
+
+    @if (!empty($vista_historica))
+        <div class="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-2 rounded mb-4 text-sm text-center">
+            🕰️ Estás viendo la malla del <strong>{{ \Carbon\Carbon::parse($fecha_malla)->format('d-m-Y') }}</strong>.
+            <a href="{{ route('procesos.malla') }}" class="underline text-blue-700 hover:text-blue-900 ml-2">
+                ← Volver a malla actual
+            </a>
+        </div>
+    @else
+        <p class="text-sm text-gray-700 mb-4 text-center">
+            Fecha en ejecución: <strong>{{ $fecha_malla ?? \Carbon\Carbon::now('America/Santiago')->format('d-m-Y') }}</strong>
+        </p>
+
+        {{-- 🗓️ Botón a día anterior --}}
+        <div class="text-center mb-6">
+            <a href="{{ route('procesos.historico', \Carbon\Carbon::parse($fecha_malla)->subDay()->format('Y-m-d')) }}"
+               class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 text-sm font-semibold shadow">
+                🗓️ Ver Día Anterior
+            </a>
+        </div>
+    @endif
 
     @if (session('success'))
-    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mb-4 text-sm text-center">
-        {{ session('success') }}
-    </div>
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mb-4 text-sm text-center">
+            {{ session('success') }}
+        </div>
     @endif
 
     @foreach ($grupos as $grupo)
@@ -85,6 +134,8 @@
                                 $duracion = $proceso->inicio->diff($proceso->fin)->format('%H:%I:%S');
                             @endphp
                             <div class="text-xs mt-1">⏱️ <strong>Duración:</strong> {{ $duracion }}</div>
+                        @elseif ($proceso->inicio && !$proceso->fin)
+                            <div class="text-xs mt-1 text-yellow-800">⏳ <strong>En ejecución desde:</strong> {{ $proceso->inicio->format('H:i') }}</div>
                         @endif
 
                         @if ($proceso->adm_inicio)
@@ -120,8 +171,8 @@
 <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 relative">
         <form id="modalForm" method="POST" action="">
-            @csrf
-
+    @csrf
+    <input type="hidden" id="modal-fecha" name="fecha" value="{{ $fecha_malla ?? now()->toDateString() }}">
             <h2 class="text-lg font-semibold mb-4 text-gray-800">
                 Actualizar Proceso <span id="modal-proceso-id" class="text-indigo-600"></span>
             </h2>
@@ -169,6 +220,10 @@ function handleClick(button) {
     document.getElementById('modal-inicio').value = inicio;
     document.getElementById('modal-fin').value = fin;
     document.getElementById('modal-estado').value = estado;
+
+    // 🆕 Esto asegura que se envíe la fecha correcta al controlador
+    document.getElementById('modal-fecha').value = "{{ $fecha_malla ?? now()->toDateString() }}";
+
     form.action = `/procesos/actualizar/${id}`;
 
     document.getElementById('modal-proceso-id').textContent = `(ID: ${id}) - ${nombre}`;
