@@ -6,37 +6,33 @@
     <div class="mb-4 relative">
         <h1 class="text-3xl font-bold text-indigo-700 text-center">Malla de Procesos</h1>
 
-        @if (empty($vista_historica))
-    {{-- 🔒 Botón para cierre de día y 📤 exportar Excel con mismo estilo del requerimiento --}}
-    <div class="absolute right-0 top-0 flex gap-2 items-start">
-        <form method="POST" action="{{ route('procesos.cerrar-dia') }}"
-              onsubmit="return confirm('¿Estás seguro que deseas cerrar el día?')">
-            @csrf
-            <button type="submit"
-                    style="background: #991b1b; color: #fff; font-weight: bold; padding: 12px 24px; border-radius: 6px;">
-                🔒 Cerrar Día
-            </button>
-        </form>
+        <div class="absolute right-0 top-0 flex gap-2 items-start">
+            @if (empty($vista_historica))
+                <form method="POST" action="{{ route('procesos.cerrar-dia') }}"
+                    onsubmit="return confirm('¿Estás seguro que deseas cerrar el día?')">
+                    @csrf
+                    <button type="submit"
+                            style="background: #991b1b; color: #fff; font-weight: bold; padding: 12px 24px; border-radius: 6px;">
+                        🔒 Cerrar Día
+                    </button>
+                </form>
+            @endif
 
-        <form action="{{ route('procesos.exportar', $fecha_malla) }}" method="GET" target="_blank">
-            <button type="submit"
-                    style="background: #166534; color: #fff; font-weight: bold; padding: 12px 24px; border-radius: 6px;">
-                📤 Exportar a Excel
-            </button>
-        </form>
-    </div>
-@endif
+            <form action="{{ route('procesos.exportar', $fecha_malla) }}" method="GET" target="_blank">
+                <button type="submit"
+                        style="background: #166534; color: #fff; font-weight: bold; padding: 12px 24px; border-radius: 6px;">
+                    📤 Exportar a Excel
+                </button>
+            </form>
+        </div>
     </div>
 
-    {{-- 📅 Fecha activa --}}
-    {{-- 🔍 Navegación a días anteriores --}}
     <div class="text-center mt-4 mb-6">
         <label for="historico-selector" class="text-sm text-gray-700 mr-2">Ver malla de días anteriores:</label>
         <select id="historico-selector" class="text-sm border rounded px-2 py-1"
                 onchange="if (this.value) window.location.href = this.value;">
             <option value="">-- Seleccionar fecha --</option>
             @php
-                use Carbon\Carbon;
                 $actual = \Carbon\Carbon::parse($fecha_malla ?? now('America/Santiago'));
             @endphp
             @for ($i = 1; $i <= 7; $i++)
@@ -61,7 +57,6 @@
             Fecha en ejecución: <strong>{{ $fecha_malla ?? \Carbon\Carbon::now('America/Santiago')->format('d-m-Y') }}</strong>
         </p>
 
-        {{-- 🗓️ Botón a día anterior --}}
         <div class="text-center mb-6">
             <a href="{{ route('procesos.historico', \Carbon\Carbon::parse($fecha_malla)->subDay()->format('Y-m-d')) }}"
                class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 text-sm font-semibold shadow">
@@ -70,13 +65,26 @@
         </div>
     @endif
 
-    @if (session('success'))
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mb-4 text-sm text-center">
-            {{ session('success') }}
-        </div>
+    @php
+        $mostrarZenit = false;
+    @endphp
+
+ {{-- Título BCI SEGUROS --}}
+<h2 class="text-2xl font-bold text-center text-gray-800 mb-6 border-b-2 pb-2">🏢 COMPAÑÍA BCI SEGUROS</h2>
+
+@php
+    $mostrarZenit = false;
+@endphp
+
+@foreach ($grupos as $grupo)
+    {{-- Antes de mostrar el grupo Zenit, mostramos el título centrado --}}
+    @if (!$mostrarZenit && $grupo['nombre'] === 'Procesos Zenit')
+        <div style="height:40px;"></div>
+<h2 class="text-2xl font-bold text-center text-gray-800 mb-6 border-b-2 pb-2">🏢 COMPAÑÍA ZENIT SEGUROS</h2>
+        @php $mostrarZenit = true; @endphp
     @endif
 
-    @foreach ($grupos as $grupo)
+    @if (!empty($grupo['procesos']))
         <div class="mb-10">
             <h2 class="mt-6 text-2xl font-bold text-{{ $grupo['color'] }}-600 mb-4 flex items-center gap-2">
                 @php
@@ -92,78 +100,75 @@
 
             <div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));">
                 @foreach ($grupo['procesos'] as $proceso)
-                    @php
-                        $bgColor = $proceso->corre_hoy
-                            ? match($grupo['color']) {
-                                'red' => '#ef4444', 'indigo' => '#6366f1', 'blue' => '#3b82f6', 'green' => '#10b981',
-                                'purple' => '#8b5cf6', 'yellow' => '#facc15', 'gray' => '#6b7280', 'orange' => '#f97316',
-                                default => '#64748b'
-                            }
-                            : '#E5E7EB';
+                        @php
+                            $bgColor = $proceso->corre_hoy
+                                ? match($grupo['color']) {
+                                    'red' => '#ef4444', 'indigo' => '#6366f1', 'blue' => '#3b82f6', 'green' => '#10b981',
+                                    'purple' => '#8b5cf6', 'yellow' => '#facc15', 'gray' => '#6b7280', 'orange' => '#f97316',
+                                    default => '#64748b'
+                                }
+                                : '#E5E7EB';
 
-                        $textColor = $proceso->corre_hoy ? 'text-white drop-shadow-sm' : 'text-gray-700';
-                        $estado = $proceso->estado_nombre ?? $proceso->estado ?? 'Pendiente';
-                    @endphp
+                            $textColor = $proceso->corre_hoy ? 'text-white drop-shadow-sm' : 'text-gray-700';
+                            $estado = $proceso->estado_nombre ?? $proceso->estado ?? 'Pendiente';
+                        @endphp
 
-                    <div id="proceso-{{ $proceso->id_proceso }}"
-                         class="rounded-xl shadow-md p-3 transition duration-300 relative flex flex-col justify-between {{ $textColor }}"
-                         style="background-color: {{ $bgColor }}; height: 190px;"
-                         title="{{ $proceso->descripcion }}">
+                        <div id="proceso-{{ $proceso->id_proceso }}"
+                             class="rounded-xl shadow-md p-3 transition duration-300 relative flex flex-col justify-between {{ $textColor }}"
+                             style="background-color: {{ $bgColor }}; height: 190px;"
+                             title="{{ $proceso->descripcion }}">
 
-                        <div class="font-bold text-sm">
-                            {{ $proceso->id_proceso }}
-                        </div>
-                        <div class="text-xs mb-1">
-                            {{ $proceso->proceso }}
-                        </div>
+                            <div class="font-bold text-sm">{{ $proceso->id_proceso }}</div>
+                            <div class="text-xs mb-1">{{ $proceso->proceso }}</div>
 
-                        <div class="text-xs">
-                            <strong>Estado:</strong>
-                            <span
-                                style="background-color: {{ $proceso->color_fondo ?? '#ffffff' }};
-                                       color: {{ $proceso->color_texto ?? '#000000' }};
-                                       border: 1px solid {{ $proceso->borde_color ?? '#000000' }};"
-                                class="px-2 py-0.5 rounded text-xs inline-block mt-1"
-                            >
-                                {{ $proceso->emoji ?? '' }} {{ $estado }}
-                            </span>
-                        </div>
-
-                        @if ($proceso->inicio && $proceso->fin)
-                            @php
-                                $duracion = $proceso->inicio->diff($proceso->fin)->format('%H:%I:%S');
-                            @endphp
-                            <div class="text-xs mt-1">⏱️ <strong>Duración:</strong> {{ $duracion }}</div>
-                        @elseif ($proceso->inicio && !$proceso->fin)
-                            <div class="text-xs mt-1 text-yellow-800">⏳ <strong>En ejecución desde:</strong> {{ $proceso->inicio->format('H:i') }}</div>
-                        @endif
-
-                        @if ($proceso->adm_inicio)
-                            <div class="text-xs mt-1">👤 <strong>Inicio:</strong> {{ $proceso->adm_inicio }}</div>
-                        @endif
-
-                        @if ($proceso->adm_fin)
-                            <div class="text-xs">👤 <strong>Fin:</strong> {{ $proceso->adm_fin }}</div>
-                        @endif
-
-                        @if ($proceso->corre_hoy || ($proceso->inicio && !$proceso->fin))
-                            <div class="mt-2">
-                                <button
-                                    class="text-white text-xs underline hover:text-gray-200"
-                                    data-id="{{ $proceso->id_proceso }}"
-                                    data-nombre="{{ $proceso->proceso }}"
-                                    data-inicio="{{ optional($proceso->inicio)->format('Y-m-d\TH:i') }}"
-                                    data-fin="{{ optional($proceso->fin)->format('Y-m-d\TH:i') }}"
-                                    data-estado="{{ $proceso->estado_nombre ?? 'Pendiente' }}"
-                                    onclick="handleClick(this)">
-                                    Actualizar
-                                </button>
+                            <div class="text-xs">
+                                <strong>Estado:</strong>
+                                <span
+                                    style="background-color: {{ $proceso->color_fondo ?? '#ffffff' }};
+                                            color: {{ $proceso->color_texto ?? '#000000' }};
+                                            border: 1px solid {{ $proceso->borde_color ?? '#000000' }};"
+                                    class="px-2 py-0.5 rounded text-xs inline-block mt-1"
+                                >
+                                    {{ $proceso->emoji ?? '' }} {{ $estado }}
+                                </span>
                             </div>
-                        @endif
-                    </div>
-                @endforeach
+
+                            @if ($proceso->inicio && $proceso->fin)
+                                @php
+                                    $duracion = $proceso->inicio->diff($proceso->fin)->format('%H:%I:%S');
+                                @endphp
+                                <div class="text-xs mt-1">⏱️ <strong>Duración:</strong> {{ $duracion }}</div>
+                            @elseif ($proceso->inicio && !$proceso->fin)
+                                <div class="text-xs mt-1 text-yellow-800">⏳ <strong>En ejecución desde:</strong> {{ $proceso->inicio->format('H:i') }}</div>
+                            @endif
+
+                            @if ($proceso->adm_inicio)
+                                <div class="text-xs mt-1">👤 <strong>Inicio:</strong> {{ $proceso->adm_inicio }}</div>
+                            @endif
+
+                            @if ($proceso->adm_fin)
+                                <div class="text-xs">👤 <strong>Fin:</strong> {{ $proceso->adm_fin }}</div>
+                            @endif
+
+                            @if ($proceso->corre_hoy || ($proceso->inicio && !$proceso->fin))
+                                <div class="mt-2">
+                                    <button
+                                        class="text-white text-xs underline hover:text-gray-200"
+                                        data-id="{{ $proceso->id_proceso }}"
+                                        data-nombre="{{ $proceso->proceso }}"
+                                        data-inicio="{{ optional($proceso->inicio)->format('Y-m-d\TH:i') }}"
+                                        data-fin="{{ optional($proceso->fin)->format('Y-m-d\TH:i') }}"
+                                        data-estado="{{ $proceso->estado_nombre ?? 'Pendiente' }}"
+                                        onclick="handleClick(this)">
+                                        Actualizar
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
             </div>
-        </div>
+        @endif
     @endforeach
 </div>
 
@@ -171,8 +176,8 @@
 <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 relative">
         <form id="modalForm" method="POST" action="">
-    @csrf
-    <input type="hidden" id="modal-fecha" name="fecha" value="{{ $fecha_malla ?? now()->toDateString() }}">
+            @csrf
+            <input type="hidden" id="modal-fecha" name="fecha" value="{{ $fecha_malla ?? now()->toDateString() }}">
             <h2 class="text-lg font-semibold mb-4 text-gray-800">
                 Actualizar Proceso <span id="modal-proceso-id" class="text-indigo-600"></span>
             </h2>
@@ -205,7 +210,6 @@
     </div>
 </div>
 
-{{-- ✅ JS --}}
 <script>
 let procesoActivo = null;
 
@@ -220,17 +224,12 @@ function handleClick(button) {
     document.getElementById('modal-inicio').value = inicio;
     document.getElementById('modal-fin').value = fin;
     document.getElementById('modal-estado').value = estado;
-
-    // 🆕 Esto asegura que se envíe la fecha correcta al controlador
     document.getElementById('modal-fecha').value = "{{ $fecha_malla ?? now()->toDateString() }}";
-
     form.action = `/procesos/actualizar/${id}`;
 
     document.getElementById('modal-proceso-id').textContent = `(ID: ${id}) - ${nombre}`;
 
-    if (procesoActivo) {
-        procesoActivo.classList.remove('card-activa');
-    }
+    if (procesoActivo) procesoActivo.classList.remove('card-activa');
 
     const tarjeta = document.getElementById(`proceso-${id}`);
     if (tarjeta) {
@@ -238,6 +237,7 @@ function handleClick(button) {
         procesoActivo = tarjeta;
     }
 
+    document.getElementById('modal').classList.add('hidden'); // Ocultar antes de mostrar para asegurar el estado
     document.getElementById('modal').classList.remove('hidden');
 }
 
@@ -250,7 +250,6 @@ function closeModal() {
 }
 </script>
 
-{{-- ✅ Estilos extra --}}
 <style>
 .card-activa {
     outline: 3px solid #2563eb;

@@ -34,11 +34,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/solicitantes', [RequerimientoController::class, 'storeSolicitante'])->name('solicitantes.store');
 
     // === MALLA DE PROCESOS ===
-Route::prefix('procesos')->group(function () {
+    Route::prefix('procesos')->group(function () {
     Route::get('/malla', [MallaController::class, 'index'])->name('procesos.malla');
     Route::post('/actualizar/{id}', [MallaController::class, 'actualizar'])->name('procesos.actualizar');
     Route::post('/cerrar-dia', [MallaController::class, 'cerrarDia'])->name('procesos.cerrar-dia');
     Route::get('/exportar/{fecha}', [MallaController::class, 'exportar'])->name('procesos.exportar');
+    Route::get('/informe/{fecha}', [\App\Http\Controllers\InformeController::class, 'generar'])->name('informe.generar');
+
 
 
     // ✅ NUEVA RUTA: vista histórica
