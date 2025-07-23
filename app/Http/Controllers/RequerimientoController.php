@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Arr;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Color;
+use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class RequerimientoController extends Controller
 {
@@ -45,7 +50,6 @@ class RequerimientoController extends Controller
 {
     $query = DB::table('requerimientos');
 
-    // Filtro por fecha (si ambas fechas están presentes y tienen valores)
     if ($request->has('fecha_desde') && $request->has('fecha_hasta') &&
         !empty($request->input('fecha_desde')[0]) && !empty($request->input('fecha_hasta')[0])) {
         $desde = min($request->input('fecha_desde'));
@@ -53,7 +57,6 @@ class RequerimientoController extends Controller
         $query->whereBetween('fecha_hora', [$desde . ' 00:00:00', $hasta . ' 23:59:59']);
     }
 
-    // Filtros múltiples (solo aplicar si hay valores reales)
     $filtros = [
         'filtro_numero' => 'numero_ticket',
         'filtro_tipo' => 'requerimiento',
@@ -74,21 +77,79 @@ class RequerimientoController extends Controller
         }
     }
 
-    $requerimientos = $query->orderBy('fecha_hora', 'desc')->get();
+    $requerimientos = $query->orderBy('id', 'asc')->get();
 
-    return Excel::download(new class($requerimientos) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
-        private $data;
-        public function __construct($data) { $this->data = $data; }
-        public function collection() { return collect($this->data); }
-        public function headings(): array {
-            return [
-                'ID', 'Fecha Hora', 'Turno', 'N° Ticket', 'Requerimiento', 'Solicitante', 'Negocio', 'Ambiente',
-                'Capa', 'Servidor', 'Estado', 'Tipo Solicitud', 'Tipo Pase', 'IC', 'Observaciones',
-                'Creado Por', 'Creado', 'Actualizado'
-            ];
+    $templatePath = storage_path('app/templates/Requerimientos Base.xlsx');
+    $outputPath = storage_path('app/exports/Requerimientos-Filtrados.xlsx');
+
+    if (!Storage::exists('exports')) {
+        Storage::makeDirectory('exports');
+    }
+
+    $spreadsheet = IOFactory::load($templatePath);
+    $sheet = $spreadsheet->getActiveSheet();
+    $row = 4;
+
+    foreach ($requerimientos as $req) {
+        $fillColor = ($row % 2 === 0) ? 'F2F2F2' : 'E6E6E6';
+
+        $sheet->setCellValue("A{$row}", ucfirst(strtolower($req->turno)));                  // A: Turno
+        $sheet->setCellValue("B{$row}", \Carbon\Carbon::parse($req->fecha_hora)->format('d-m-Y')); // B: Fecha
+        $sheet->setCellValue("C{$row}", $req->requerimiento);                              // C: Requerimiento
+        $sheet->setCellValue("D{$row}", $req->solicitante);                                // D: Solicitante
+        $sheet->setCellValue("E{$row}", $req->negocio);                                    // E: Negocio
+        $sheet->setCellValue("F{$row}", $req->ambiente);                                   // F: Ambiente
+        $sheet->setCellValue("G{$row}", $req->capa);                                       // G: Capa
+        $sheet->setCellValue("H{$row}", $req->servidor);                                   // H: Servidor
+        $sheet->setCellValue("I{$row}", $req->estado);                                     // I: Estado
+        $sheet->setCellValue("J{$row}", $req->tipo_solicitud);                             // J: Tipo Solicitud
+        $sheet->setCellValue("K{$row}", $req->numero_ticket);                              // K: Número Ticket
+        $sheet->setCellValue("L{$row}", $req->tipo_pase);                                  // L: Tipo Pase
+        $sheet->setCellValue("M{$row}", $req->ic);                                         // M: IC
+        $sheet->setCellValue("N{$row}", '1');                                              // N: 1 fijo
+        $sheet->setCellValue("O{$row}", '');                                               // O: Vacío
+        $sheet->setCellValue("P{$row}", '');                                               // P: Vacío
+        $sheet->setCellValue("Q{$row}", $req->observaciones);                              // Q: Observaciones
+        $sheet->setCellValue("R{$row}", $req->id);                                         // R: ID
+        $sheet->setCellValue("S{$row}", \Carbon\Carbon::parse($req->fecha_hora)
+            ->locale('es')->isoFormat('D MMMM YYYY H:mm') . " | Creado por: " . $req->creado_por); // S: Registro
+
+        // 🎨 Estilos
+        foreach (range('A', 'S') as $col) {
+            $cell = "{$col}{$row}";
+            $sheet->getStyle($cell)->getFont()->setName('Calibri')->setSize(11);
+            $sheet->getStyle($cell)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($fillColor);
+            $sheet->getStyle($cell)->getBorders()->getAllBorders()
+                ->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('FFFFFF');
+            $sheet->getStyle($cell)->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
         }
-    }, 'requerimientos.xlsx');
+
+        // 🧭 Alineaciones específicas
+        $sheet->getStyle("B{$row}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+        foreach (['C','D','E','F','G','H','I','J','K','L'] as $col)
+            $sheet->getStyle("{$col}{$row}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+
+        $sheet->getStyle("M{$row}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+        $sheet->getStyle("N{$row}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("R{$row}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        // Ajustes de texto en Q y S
+        foreach (['Q', 'S'] as $col) {
+            $sheet->getStyle("{$col}{$row}")->getAlignment()->setWrapText(true);
+        }
+
+        // Altura automática
+        $sheet->getRowDimension($row)->setRowHeight(-1);
+
+        $row++;
+    }
+
+    $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+    $writer->save($outputPath);
+
+    return response()->download($outputPath)->deleteFileAfterSend(true);
 }
+
 
     // Guardar nuevo requerimiento
     public function store(Request $request)
