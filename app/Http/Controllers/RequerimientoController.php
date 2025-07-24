@@ -324,4 +324,77 @@ public function filtrados(Request $request)
     ]);
 }
 
+public function importarRequerimientos(Request $request)
+{
+    $request->validate([
+        'archivo' => 'required|mimes:xlsx,xls',
+    ]);
+
+    $archivo = $request->file('archivo');
+
+    try {
+        $spreadsheet = IOFactory::load($archivo);
+        $hoja = $spreadsheet->getActiveSheet();
+        $datos = $hoja->toArray();
+    } catch (\Exception $e) {
+        return back()->with('error', 'No se pudo leer el archivo. Verifica el formato.');
+    }
+
+    $total = 0;
+    $insertados = 0;
+    $repetidos = 0;
+    $errores = [];
+
+    foreach ($datos as $index => $fila) {
+        // Saltamos encabezado
+        if ($index < 3) continue;
+
+        $total++;
+
+        try {
+            $fecha = isset($fila[1]) ? \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($fila[1]) : null;
+            $fechaFormateada = $fecha ? $fecha->format('Y-m-d H:i:s') : null;
+
+            $ticket = trim($fila[10]); // Columna K = Nº Ticket
+
+            // Evitar duplicados
+            if (DB::table('requerimientos')->where('numero_ticket', $ticket)->exists()) {
+                $repetidos++;
+                continue;
+            }
+
+            DB::table('requerimientos')->insert([
+                'fecha_hora'       => $fechaFormateada,
+                'turno'            => ucfirst(strtolower(trim($fila[0]))), // Columna A
+                'requerimiento'    => trim($fila[2]), // C
+                'solicitante'      => trim($fila[3]),
+                'negocio'          => trim($fila[4]),
+                'ambiente'         => trim($fila[5]),
+                'capa'             => trim($fila[6]),
+                'servidor'         => trim($fila[7]),
+                'estado'           => trim($fila[8]),
+                'tipo_solicitud'   => trim($fila[9]),
+                'numero_ticket'    => $ticket,
+                'tipo_pase'        => trim($fila[11]),
+                'ic'               => trim($fila[12]),
+                'observaciones'    => trim($fila[16]),
+                'creado_por'       => auth()->user()->name,
+                'created_at'       => now(),
+                'updated_at'       => now(),
+            ]);
+
+            $insertados++;
+        } catch (\Exception $e) {
+            $errores[] = "Fila " . ($index + 1) . ": " . $e->getMessage();
+        }
+    }
+
+    return back()->with('resultado', [
+        'total' => $total,
+        'insertados' => $insertados,
+        'repetidos' => $repetidos,
+        'errores' => $errores,
+    ]);
+}
+
 }

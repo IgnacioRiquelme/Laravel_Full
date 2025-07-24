@@ -5,6 +5,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RequerimientoController;
 use App\Http\Controllers\MallaController;
 use App\Http\Middleware\EnsureDatabaseConnection;
+use App\Http\Controllers\CargaRequerimientosController;
 
 Route::get('/', fn () => view('welcome'));
 
@@ -32,6 +33,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/requerimientos/dia', [RequerimientoController::class, 'vistaRequerimientosDelDia'])->name('requerimientos.dia');
     Route::post('/requerimientos/exportar', [RequerimientoController::class, 'exportarExcel'])->name('requerimientos.exportar');
     Route::post('/solicitantes', [RequerimientoController::class, 'storeSolicitante'])->name('solicitantes.store');
+    Route::get('/carga/requerimientos', [CargaRequerimientosController::class, 'form'])->name('carga.requerimientos.form');
+    Route::post('/carga/requerimientos', [CargaRequerimientosController::class, 'importar'])->name('carga.requerimientos.importar');
 
     // === MALLA DE PROCESOS ===
     Route::prefix('procesos')->group(function () {
@@ -39,8 +42,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/actualizar/{id}', [MallaController::class, 'actualizar'])->name('procesos.actualizar');
     Route::post('/cerrar-dia', [MallaController::class, 'cerrarDia'])->name('procesos.cerrar-dia');
     Route::get('/exportar/{fecha}', [MallaController::class, 'exportar'])->name('procesos.exportar');
-    Route::get('/informe/{fecha}', [\App\Http\Controllers\InformeController::class, 'generar'])->name('informe.generar');
-
+    
 
 
     // ✅ NUEVA RUTA: vista histórica
@@ -49,7 +51,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     //Rutas DB conexion
     Route::middleware([EnsureDatabaseConnection::class])->group(function () {
-    Route::get('/', [TuControlador::class, 'index']);
+    //Route::get('/', [TuControlador::class, 'index']);
     // ⚠️ agrega aquí todas tus rutas protegidas
     Route::resource('procesos', MallaController::class);
 });
