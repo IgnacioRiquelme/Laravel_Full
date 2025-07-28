@@ -6,7 +6,7 @@
 
     <div class="flex flex-col gap-4 w-full max-w-sm">
         <a href="{{ route('requerimientos.create') }}" class="menu-item bg-indigo-500 hover:bg-indigo-600 text-white py-3 px-6 rounded text-center font-medium">Nuevo Requerimiento</a>
-        <a href="#" class="menu-item bg-indigo-500 hover:bg-indigo-600 text-white py-3 px-6 rounded text-center font-medium">Nuevo Incidente</a>
+        <a href="{{ route('incidentes.create') }}"  class="menu-item bg-indigo-500 hover:bg-indigo-600 text-white py-3 px-6 rounded text-center font-medium">Nuevo Incidente</a>
         <a href="#" class="menu-item bg-indigo-500 hover:bg-indigo-600 text-white py-3 px-6 rounded text-center font-medium">Actualización de Incidentes</a>
         <a href="#" class="menu-item bg-indigo-500 hover:bg-indigo-600 text-white py-3 px-6 rounded text-center font-medium">Reporte Veeam y TCM</a>
         <a href="{{ route('procesos.malla') }}" class="menu-item bg-indigo-500 hover:bg-indigo-600 text-white py-3 px-6 rounded text-center font-medium">Bitácora de Procesos</a>

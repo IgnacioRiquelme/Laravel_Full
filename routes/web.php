@@ -6,6 +6,27 @@ use App\Http\Controllers\RequerimientoController;
 use App\Http\Controllers\MallaController;
 use App\Http\Middleware\EnsureDatabaseConnection;
 use App\Http\Controllers\CargaRequerimientosController;
+use App\Http\Controllers\IncidenteController;
+use App\Http\Controllers\EstadoIncidenteController;
+use App\Http\Controllers\NegocioIncidenteController;
+use App\Http\Controllers\AmbienteIncidenteController;
+use App\Http\Controllers\CapaIncidenteController;
+use App\Http\Controllers\ServidorIncidenteController;
+use App\Http\Controllers\EventoIncidenteController;
+use App\Http\Controllers\AccionIncidenteController;
+use App\Http\Controllers\EscaladoIncidenteController;
+use App\Http\Controllers\TipoRequerimientoIncidenteController;
+
+
+// Ruta para test de conexión (ping DB)
+Route::get('/ping-db', function () {
+    try {
+        \Illuminate\Support\Facades\DB::select('SELECT 1');
+        return response()->json(['status' => 'ok']);
+    } catch (\Exception $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
 
 Route::get('/', fn () => view('welcome'));
 
@@ -36,25 +57,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/carga/requerimientos', [CargaRequerimientosController::class, 'form'])->name('carga.requerimientos.form');
     Route::post('/carga/requerimientos', [CargaRequerimientosController::class, 'importar'])->name('carga.requerimientos.importar');
 
+    // === INCIDENTES ===
+    Route::get('/incidentes/create', [IncidenteController::class, 'create'])->name('incidentes.create');
+    Route::post('/incidentes', [IncidenteController::class, 'store'])->name('incidentes.store');
+    Route::get('/incidentes', [IncidenteController::class, 'index'])->name('incidentes.index');
+    Route::get('/incidentes/search-proceso', [App\Http\Controllers\IncidenteController::class, 'searchProceso'])->name('incidentes.search-proceso');  
+    
+    // === ACTUALIZACIONES INCIDENTES COMBOBOX ===
+
+    Route::post('/estados_incidentes', [EstadoIncidenteController::class, 'store'])->name('estados_incidentes.store');
+Route::post('/negocio_incidentes', [NegocioIncidenteController::class, 'store'])->name('negocio_incidentes.store');
+Route::post('/ambiente_incidentes', [AmbienteIncidenteController::class, 'store'])->name('ambiente_incidentes.store');
+Route::post('/capa_incidentes', [CapaIncidenteController::class, 'store'])->name('capa_incidentes.store');
+Route::post('/servidor_incidentes', [ServidorIncidenteController::class, 'store'])->name('servidor_incidentes.store');
+Route::post('/evento_incidentes', [EventoIncidenteController::class, 'store'])->name('evento_incidentes.store');
+Route::post('/accion_incidentes', [AccionIncidenteController::class, 'store'])->name('accion_incidentes.store');
+Route::post('/escalado_incidentes', [EscaladoIncidenteController::class, 'store'])->name('escalado_incidentes.store');
+Route::post('/tipo_requerimiento_incidentes', [TipoRequerimientoIncidenteController::class, 'store'])->name('tipo_requerimiento_incidentes.store');
+
     // === MALLA DE PROCESOS ===
     Route::prefix('procesos')->group(function () {
-    Route::get('/malla', [MallaController::class, 'index'])->name('procesos.malla');
-    Route::post('/actualizar/{id}', [MallaController::class, 'actualizar'])->name('procesos.actualizar');
-    Route::post('/cerrar-dia', [MallaController::class, 'cerrarDia'])->name('procesos.cerrar-dia');
-    Route::get('/exportar/{fecha}', [MallaController::class, 'exportar'])->name('procesos.exportar');
-    
+        Route::get('/malla', [MallaController::class, 'index'])->name('procesos.malla');
+        Route::post('/actualizar/{id}', [MallaController::class, 'actualizar'])->name('procesos.actualizar');
+        Route::post('/cerrar-dia', [MallaController::class, 'cerrarDia'])->name('procesos.cerrar-dia');
+        Route::get('/exportar/{fecha}', [MallaController::class, 'exportar'])->name('procesos.exportar');
 
+        // ✅ NUEVA RUTA: vista histórica
+        Route::get('/historico/{fecha}', [MallaController::class, 'historico'])->name('procesos.historico');
+    });
 
-    // ✅ NUEVA RUTA: vista histórica
-    Route::get('/historico/{fecha}', [MallaController::class, 'historico'])->name('procesos.historico');
-});
-
-    //Rutas DB conexion
+    // Rutas DB conexión protegidas
     Route::middleware([EnsureDatabaseConnection::class])->group(function () {
-    //Route::get('/', [TuControlador::class, 'index']);
-    // ⚠️ agrega aquí todas tus rutas protegidas
-    Route::resource('procesos', MallaController::class);
-});
+        Route::resource('procesos', MallaController::class);
+    });
 
     // API para edición de requerimientos
     Route::get('/api/requerimientos/{ticket}', function ($ticket) {
