@@ -26,7 +26,12 @@
         <h2 class="text-lg font-semibold mb-4">Acciones</h2>
         <div class="flex flex-col gap-4 mb-6">
             <a href="{{ route('incidentes.index') }}" class="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-center">
-                Incidentes del día
+                Seguimiento Incidentes
+            </a>
+        </div>
+        <div class="flex flex-col gap-4 mb-6">
+            <a href="{{ route('incidentes.index') }}" class="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-center">
+                Mantenedor de Procesos
             </a>
         </div>
         <h2 class="text-lg font-semibold mb-3">Filtros</h2>

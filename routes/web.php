@@ -66,14 +66,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // === ACTUALIZACIONES INCIDENTES COMBOBOX ===
 
     Route::post('/estados_incidentes', [EstadoIncidenteController::class, 'store'])->name('estados_incidentes.store');
-Route::post('/negocio_incidentes', [NegocioIncidenteController::class, 'store'])->name('negocio_incidentes.store');
-Route::post('/ambiente_incidentes', [AmbienteIncidenteController::class, 'store'])->name('ambiente_incidentes.store');
-Route::post('/capa_incidentes', [CapaIncidenteController::class, 'store'])->name('capa_incidentes.store');
-Route::post('/servidor_incidentes', [ServidorIncidenteController::class, 'store'])->name('servidor_incidentes.store');
-Route::post('/evento_incidentes', [EventoIncidenteController::class, 'store'])->name('evento_incidentes.store');
-Route::post('/accion_incidentes', [AccionIncidenteController::class, 'store'])->name('accion_incidentes.store');
-Route::post('/escalado_incidentes', [EscaladoIncidenteController::class, 'store'])->name('escalado_incidentes.store');
-Route::post('/tipo_requerimiento_incidentes', [TipoRequerimientoIncidenteController::class, 'store'])->name('tipo_requerimiento_incidentes.store');
+    Route::post('/negocio_incidentes', [NegocioIncidenteController::class, 'store'])->name('negocio_incidentes.store');
+    Route::post('/ambiente_incidentes', [AmbienteIncidenteController::class, 'store'])->name('ambiente_incidentes.store');
+    Route::post('/capa_incidentes', [CapaIncidenteController::class, 'store'])->name('capa_incidentes.store');
+    Route::post('/servidor_incidentes', [ServidorIncidenteController::class, 'store'])->name('servidor_incidentes.store');
+    Route::post('/evento_incidentes', [EventoIncidenteController::class, 'store'])->name('evento_incidentes.store');
+    Route::post('/accion_incidentes', [AccionIncidenteController::class, 'store'])->name('accion_incidentes.store');
+    Route::post('/escalado_incidentes', [EscaladoIncidenteController::class, 'store'])->name('escalado_incidentes.store');
+    Route::post('/tipo_requerimiento_incidentes', [TipoRequerimientoIncidenteController::class, 'store'])->name('tipo_requerimiento_incidentes.store');
+
+    // === MANTENEDOR PROCESOS ===
+
+    Route::prefix('procesos/mantenedor')->name('procesos.mantenedor.')->group(function () {
+    Route::get('/', [ProcesoMantenedorController::class, 'index'])->name('index');
+    Route::get('/crear', [ProcesoMantenedorController::class, 'create'])->name('create');
+    Route::post('/', [ProcesoMantenedorController::class, 'store'])->name('store');
+    Route::get('/{id}/editar', [ProcesoMantenedorController::class, 'edit'])->name('edit');
+    Route::put('/{id}', [ProcesoMantenedorController::class, 'update'])->name('update');
+    });
 
     // === MALLA DE PROCESOS ===
     Route::prefix('procesos')->group(function () {
